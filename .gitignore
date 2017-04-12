@@ -1,0 +1,5 @@
+app.sh
+env
+.idea
+*.pyc
+
