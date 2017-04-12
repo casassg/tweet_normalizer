@@ -20,9 +20,10 @@ def main():
         if 'id' not in tweet:
             logging.error('ERRONIOUS TWEET: %s' % tweet)
             continue
-        logging.info("Tweet received: %s:%d:%d: key=%s tweet_id=%s" % (message.topic, message.partition,
-                                                    message.offset, message.key,
-                                                    tweet['id']))
+        if any(token in tweet['text'] for token in tokens):
+            logging.info("Tweet received: %s:%d:%d: key=%s tweet_id=%s" % (message.topic, message.partition,
+                                                                           message.offset, message.key,
+                                                                           tweet['id']))
 
 
 if __name__ == "__main__":
@@ -30,4 +31,8 @@ if __name__ == "__main__":
         format='%(asctime)s.%(msecs)s:%(name)s:%(thread)d:%(levelname)s:%(process)d:%(message)s',
         level=logging.INFO
     )
+    logging.info('Event: %s' % event)
+    logging.info('Tracking keywords: %s' % ','.join(tokens))
+    logging.info('Kafka servers: %s' % ','.join(bootstrap_servers))
+    logging.info('Start stream track')
     main()
