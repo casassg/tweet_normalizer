@@ -102,10 +102,11 @@ def create_dict(event_key, event_kw):
         'u_created_at': lambda x: time.mktime(time.strptime(x['user']['created_at'], '%a %b %d %H:%M:%S +0000 %Y')),
         'hashtags': lambda x: list(map(lambda h:h['text'], x['entities']['hashtags'])),
         'urls': lambda x: list(map(lambda url:url['url'], x['entities']['urls'])),
+        # Concat names with a space separation
         # 'um_screen_name': lambda x: x['user']['geo_enabled'],
-        # 'media_url': lambda x: x['user']['geo_enabled'],
         # 'um_name': lambda x: x['user']['geo_enabled'],
         # 'um_id': lambda x: x['user']['geo_enabled'],
+        # 'media_url': lambda x: x['user']['geo_enabled'],
 
     }
 
