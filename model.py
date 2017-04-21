@@ -14,10 +14,9 @@ KEYSPACE = 'twitter_analytics'
 
 
 class Tweet(Model):
-    id = columns.Text(primary_key=True)
+    event_name = columns.Text(primary_key=True)
+    t_id = columns.Text(primary_key=True, clustering_order="DESC")
     event_kw = columns.Text()
-    event_name = columns.Text()
-    t_id = columns.Text()
     t_created_at = columns.DateTime()
     t_text = columns.Text()
     raw = columns.Text()
@@ -70,7 +69,6 @@ sync_table(Tweet)
 
 def create_dict(event_key, event_kw):
     return {
-        'id': lambda x: event_key + x['id_str'],
         't_id': lambda x: x['id_str'],
         'event_kw': lambda x: ','.join(event_kw),
         'event_name': lambda x: event_key,
