@@ -1,13 +1,12 @@
 import logging
-
+import os
+import socket
 import time
+
 from cassandra.cluster import Cluster
+from cassandra.cqlengine import columns, connection
 from cassandra.cqlengine.management import sync_table
 from cassandra.cqlengine.models import Model
-from cassandra.cqlengine import columns, connection
-import socket
-
-import os
 
 CASSANDRA_IPS = list(
     map(socket.gethostbyname, os.environ.get('CASSANDRA_NODES', '127.0.0.1').replace(' ', '').split(',')))
@@ -70,7 +69,6 @@ sync_table(Tweet)
 
 
 def create_dict(event_key, event_kw):
-
     return {
         'id': lambda x: event_key + x['id_str'],
         't_id': lambda x: x['id_str'],
@@ -100,18 +98,19 @@ def create_dict(event_key, event_kw):
         'u_favourites_count': lambda x: x['user']['favourites_count'],
         'u_statuses_count': lambda x: x['user']['statuses_count'],
         'u_created_at': lambda x: time.mktime(time.strptime(x['user']['created_at'], '%a %b %d %H:%M:%S +0000 %Y')),
-        'hashtags': lambda x: list(map(lambda h:h['text'], x['entities']['hashtags'])),
-        'urls': lambda x: list(map(lambda url:url['url'], x['entities']['urls'])),
+        'hashtags': lambda x: list(map(lambda h: h['text'], x['entities']['hashtags'])),
+        'urls': lambda x: list(map(lambda url: url['url'], x['entities']['urls'])),
         # Concat names with a space separation
-        # 'um_screen_name': lambda x: x['user']['geo_enabled'],
-        # 'um_name': lambda x: x['user']['geo_enabled'],
-        # 'um_id': lambda x: x['user']['geo_enabled'],
-        # 'media_url': lambda x: x['user']['geo_enabled'],
+        'um_screen_name': lambda x: ' '.join(map(lambda um: um['screen_name'], x['entities']['user_mentions'])),
+        'um_name': lambda x: ' '.join(map(lambda um: um['name'], x['entities']['user_mentions'])),
+        'um_id': lambda x: ' '.join(map(lambda um: um['id_str'], x['entities']['user_mentions'])),
+        'media_url': lambda x: ' '.join(map(lambda m: m['media_url_https'], x['entities']['media']))
+        if 'media' in x['entities'] else None,
 
     }
 
 
-def save_tweet(tweet,raw_tweet, event_dict):
+def save_tweet(tweet, raw_tweet, event_dict):
     kwargs = {}
     for k, f in event_dict.items():
         conversed = f(tweet)
