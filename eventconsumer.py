@@ -1,20 +1,22 @@
 import json
-import os
-
 import logging
+import os
 
 from kafka import KafkaConsumer
 
-event = os.environ.get('EVENT_KEY', '')
+EVENT_KEY = os.environ.get('EVENT_KEY', '')
 
-assert event, 'Event key must be specified as environment variable'
+assert EVENT_KEY, 'Event key must be specified as environment variable'
 
-tokens = os.environ.get('TOKENS', '').split(',')
-bootstrap_servers = os.environ.get('KAFKA_SERVERS', 'localhost:9092').split(',')
+TOKENS = list(filter(None, os.environ.get('TOKENS', '').split(',')))
+
+assert TOKENS, 'Tokens can\'t be empty'
+
+KAFKA_SERVER = os.environ.get('KAFKA_SERVERS', 'localhost:9092').split(',')
 
 
 def main(save, event_dict):
-    consumer = KafkaConsumer('raw_tweets', group_id=event, bootstrap_servers=bootstrap_servers,
+    consumer = KafkaConsumer('raw_tweets', group_id=EVENT_KEY, bootstrap_servers=KAFKA_SERVER,
                              value_deserializer=lambda m: json.loads(m.decode('utf-8')))
 
     for message in consumer:
@@ -22,7 +24,7 @@ def main(save, event_dict):
         if 'id' not in tweet:
             logging.error('ERRONIOUS TWEET: %s' % tweet)
             continue
-        if any(token in tweet['text'] for token in tokens):
+        if any(token in tweet['text'] for token in TOKENS):
             logging.info("Tweet accepted: %s:%d:%d: key=%s tweet_id=%s" % (message.topic, message.partition,
                                                                            message.offset, message.key,
                                                                            tweet['id']))
@@ -37,10 +39,12 @@ if __name__ == "__main__":
     )
     import model
 
-    logging.info('Event: %s' % event)
-    logging.info('Tracking keywords: %s' % ','.join(tokens))
-    logging.info('Kafka servers: %s' % ','.join(bootstrap_servers))
+    logging.info('Event: %s' % EVENT_KEY)
+    logging.info('Tracking keywords: %s' % ','.join(TOKENS))
+    logging.info('Kafka servers: %s' % ','.join(KAFKA_SERVER))
     logging.info('Connecting to Cassandra...')
     logging.info('Start stream track')
-    event_dict = model.create_dict(event, tokens)
+    if not TOKENS:
+        logging.error('Tokens can\'t be empty')
+    event_dict = model.create_dict(EVENT_KEY, TOKENS)
     main(model.save_tweet, event_dict)
