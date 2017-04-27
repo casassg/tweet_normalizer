@@ -99,10 +99,10 @@ def create_dict(event_key, event_kw):
         'hashtags': lambda x: list(map(lambda h: h['text'], x['entities']['hashtags'])),
         'urls': lambda x: list(map(lambda url: url['url'], x['entities']['urls'])),
         # Concat names with a space separation
-        'um_screen_name': lambda x: ' '.join(map(lambda um: um['screen_name'], x['entities']['user_mentions'])),
-        'um_name': lambda x: ' '.join(map(lambda um: um['name'], x['entities']['user_mentions'])),
-        'um_id': lambda x: ' '.join(map(lambda um: um['id_str'], x['entities']['user_mentions'])),
-        'media_url': lambda x: ' '.join(map(lambda m: m['media_url_https'], x['entities']['media']))
+        'um_screen_name': lambda x: ' '.join(map(lambda um: str(um['screen_name']), x['entities']['user_mentions'])),
+        'um_name': lambda x: ' '.join(map(lambda um: str(um['name']), x['entities']['user_mentions'])),
+        'um_id': lambda x: ' '.join(map(lambda um: str(um['id_str']), x['entities']['user_mentions'])),
+        'media_url': lambda x: ' '.join(map(lambda m: str(m['media_url_https']), x['entities']['media']))
         if 'media' in x['entities'] else None,
 
     }

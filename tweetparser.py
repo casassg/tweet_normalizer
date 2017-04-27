@@ -29,7 +29,8 @@ def main(save, event_dict):
                                                                            message.offset, message.key,
                                                                            tweet['id']))
             save(tweet, message.value, event_dict)
-            # print(tweet)
+            # Open file to mark that we are healthy (This way K8s knows we are working here)
+            open('/tmp/healthy', 'a').close()
 
 
 if __name__ == "__main__":
