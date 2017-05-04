@@ -17,11 +17,10 @@ KEYSPACE = 'twitter_analytics'
 class Tweet(Model):
     id = columns.UUID(primary_key=True, default=uuid.uuid4)
     event_name = columns.Text(index=True)
-    t_id = columns.Text(clustering_order="DESC")
+    t_id = columns.Text(primary_key=True, clustering_order="DESC")
     event_kw = columns.Text()
     t_created_at = columns.DateTime()
     t_text = columns.Text()
-    raw = columns.Text()
     t_retweet_count = columns.Integer()
     t_favorite_count = columns.Integer()
     t_geo = columns.Text()
@@ -115,5 +114,4 @@ def save_tweet(tweet, raw_tweet, event_dict):
     for k, f in event_dict.items():
         conversed = f(tweet)
         kwargs[k] = conversed if conversed else None
-    kwargs['raw'] = raw_tweet
     Tweet.create(**kwargs)
