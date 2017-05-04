@@ -2,6 +2,7 @@ import logging
 import os
 import socket
 import time
+import uuid
 
 from cassandra.cluster import Cluster
 from cassandra.cqlengine import columns, connection
@@ -14,8 +15,9 @@ KEYSPACE = 'twitter_analytics'
 
 
 class Tweet(Model):
-    event_name = columns.Text(primary_key=True)
-    t_id = columns.Text(primary_key=True, clustering_order="DESC")
+    id = columns.UUID(primary_key=True, default=uuid.uuid4)
+    event_name = columns.Text(index=True)
+    t_id = columns.Text(clustering_order="DESC")
     event_kw = columns.Text()
     t_created_at = columns.DateTime()
     t_text = columns.Text()
