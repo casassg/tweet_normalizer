@@ -3,6 +3,7 @@ import os
 import socket
 import time
 import uuid
+import ujson
 
 from cassandra.cluster import Cluster
 from cassandra.cqlengine import columns, connection
@@ -68,50 +69,52 @@ logging.info('Creating table...')
 sync_table(Tweet)
 
 
-def create_dict(event_key, event_kw):
+def create_dict(event_key, event_kw, tweet):
     return {
-        't_id': lambda x: x['id_str'],
-        'event_kw': lambda x: ','.join(event_kw),
-        'event_name': lambda x: event_key,
-        't_created_at': lambda x: time.mktime(time.strptime(x['created_at'], '%a %b %d %H:%M:%S +0000 %Y')),
-        't_text': lambda x: x['text'],
-        't_retweet_count': lambda x: x['retweet_count'],
-        't_favorite_count': lambda x: x['favorite_count'],
-        't_geo': lambda x: str(x['geo']),
-        't_coordinates': lambda x: str(x['coordinates']),
-        't_favorited': lambda x: x['favorited'],
-        't_retweeted': lambda x: x['retweeted'],
-        't_is_a_retweet': lambda x: 'retweeted_status' in x,
-        't_lang': lambda x: x['lang'],
-        'u_id': lambda x: x['user']['id_str'],
-        'u_name': lambda x: x['user']['name'],
-        'u_screen_name': lambda x: x['user']['screen_name'],
-        'u_location': lambda x: x['user']['location'],
-        'u_url': lambda x: x['user']['url'],
-        'u_lang': lambda x: x['user']['lang'],
-        'u_description': lambda x: x['user']['description'],
-        'u_time_zone': lambda x: x['user']['time_zone'],
-        'u_geo_enabled': lambda x: bool(x['user']['geo_enabled']),
-        'u_followers_count': lambda x: x['user']['followers_count'],
-        'u_friends_count': lambda x: x['user']['friends_count'],
-        'u_favourites_count': lambda x: x['user']['favourites_count'],
-        'u_statuses_count': lambda x: x['user']['statuses_count'],
-        'u_created_at': lambda x: time.mktime(time.strptime(x['user']['created_at'], '%a %b %d %H:%M:%S +0000 %Y')),
-        'hashtags': lambda x: list(map(lambda h: h['text'], x['entities']['hashtags'])),
-        'urls': lambda x: list(map(lambda url: url['url'], x['entities']['urls'])),
+        't_id': tweet['id_str'],
+        'event_kw': ','.join(event_kw),
+        'event_name': event_key,
+        't_created_at': time.mktime(time.strptime(tweet['created_at'], '%a %b %d %H:%M:%S +0000 %Y')),
+        't_text': tweet['text'],
+        't_retweet_count': tweet['retweet_count'],
+        't_favorite_count': tweet['favorite_count'],
+        't_geo': str(tweet['geo']),
+        't_coordinates': str(tweet['coordinates']),
+        't_favorited': tweet['favorited'],
+        't_retweeted': tweet['retweeted'],
+        't_is_a_retweet': 'retweeted_status' in tweet,
+        't_lang': tweet['lang'],
+        'u_id': tweet['user']['id_str'],
+        'u_name': tweet['user']['name'],
+        'u_screen_name': tweet['user']['screen_name'],
+        'u_location': tweet['user']['location'],
+        'u_url': tweet['user']['url'],
+        'u_lang': tweet['user']['lang'],
+        'u_description': tweet['user']['description'],
+        'u_time_zone': tweet['user']['time_zone'],
+        'u_geo_enabled': bool(tweet['user']['geo_enabled']),
+        'u_followers_count': tweet['user']['followers_count'],
+        'u_friends_count': tweet['user']['friends_count'],
+        'u_favourites_count': tweet['user']['favourites_count'],
+        'u_statuses_count': tweet['user']['statuses_count'],
+        'u_created_at': time.mktime(time.strptime(tweet['user']['created_at'], '%a %b %d %H:%M:%S +0000 %Y')),
+        'hashtags': list(map(lambda h: h['text'], tweet['entities']['hashtags'])),
+        'urls': list(map(lambda url: url['url'], tweet['entities']['urls'])),
         # Concat names with a space separation
-        'um_screen_name': lambda x: ' '.join(map(lambda um: str(um['screen_name']), x['entities']['user_mentions'])),
-        'um_name': lambda x: ' '.join(map(lambda um: str(um['name']), x['entities']['user_mentions'])),
-        'um_id': lambda x: ' '.join(map(lambda um: str(um['id_str']), x['entities']['user_mentions'])),
-        'media_url': lambda x: ' '.join(map(lambda m: str(m['media_url_https']), x['entities']['media']))
-        if 'media' in x['entities'] else None,
+        'um_screen_name': ' '.join(map(lambda um: str(um['screen_name']), tweet['entities']['user_mentions'])),
+        'um_name': ' '.join(map(lambda um: str(um['name']), tweet['entities']['user_mentions'])),
+        'um_id': ' '.join(map(lambda um: str(um['id_str']), tweet['entities']['user_mentions'])),
+        'media_url': ' '.join(map(lambda m: str(m['media_url_https']), tweet['entities']['media']))
+        if 'media' in tweet['entities'] else None,
 
     }
 
 
-def save_tweet(tweet, raw_tweet, event_dict):
-    kwargs = {}
-    for k, f in event_dict.items():
-        conversed = f(tweet)
-        kwargs[k] = conversed if conversed else None
-    Tweet.create(**kwargs)
+session = cluster.connect(KEYSPACE)
+prep_query = session.prepare("INSERT INTO tweet JSON ?")
+
+
+def save_tweet(tweet, event_key, event_kw):
+    session.execute_async(prep_query, [ujson.dumps(create_dict(event_key, event_kw, tweet)),])
+
+    # Tweet.create(**create_dict(event_key, event_kw, tweet))
