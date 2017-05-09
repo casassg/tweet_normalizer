@@ -1,10 +1,12 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 import logging
 import os
 import socket
-import time
 import uuid
-import ujson
+from datetime import datetime
 
+import ujson
 from cassandra.cluster import Cluster
 from cassandra.cqlengine import columns, connection
 from cassandra.cqlengine.management import sync_table
@@ -64,22 +66,23 @@ with cluster.connect() as session:
            WITH replication = { 'class': 'SimpleStrategy', 'replication_factor': '1' }
            """ % KEYSPACE)
 
-connection.setup(CASSANDRA_IPS, KEYSPACE, protocol_version=3)
-logging.info('Creating table...')
-sync_table(Tweet)
+    connection.setup(CASSANDRA_IPS, KEYSPACE, protocol_version=3)
+    logging.info('Creating table...')
+    sync_table(Tweet)
 
 
 def create_dict(event_key, event_kw, tweet):
     return {
+        'id':str(uuid.uuid1()),
         't_id': tweet['id_str'],
         'event_kw': ','.join(event_kw),
         'event_name': event_key,
-        't_created_at': time.mktime(time.strptime(tweet['created_at'], '%a %b %d %H:%M:%S +0000 %Y')),
+        't_created_at': datetime.strptime(tweet['created_at'], '%a %b %d %H:%M:%S +0000 %Y').isoformat(),
         't_text': tweet['text'],
         't_retweet_count': tweet['retweet_count'],
         't_favorite_count': tweet['favorite_count'],
-        't_geo': str(tweet['geo']),
-        't_coordinates': str(tweet['coordinates']),
+        't_geo': unicode(tweet['geo']),
+        't_coordinates': unicode(tweet['coordinates']),
         't_favorited': tweet['favorited'],
         't_retweeted': tweet['retweeted'],
         't_is_a_retweet': 'retweeted_status' in tweet,
@@ -97,24 +100,24 @@ def create_dict(event_key, event_kw, tweet):
         'u_friends_count': tweet['user']['friends_count'],
         'u_favourites_count': tweet['user']['favourites_count'],
         'u_statuses_count': tweet['user']['statuses_count'],
-        'u_created_at': time.mktime(time.strptime(tweet['user']['created_at'], '%a %b %d %H:%M:%S +0000 %Y')),
+        'u_created_at': datetime.strptime(tweet['user']['created_at'], '%a %b %d %H:%M:%S +0000 %Y').isoformat(),
         'hashtags': list(map(lambda h: h['text'], tweet['entities']['hashtags'])),
         'urls': list(map(lambda url: url['url'], tweet['entities']['urls'])),
         # Concat names with a space separation
-        'um_screen_name': ' '.join(map(lambda um: str(um['screen_name']), tweet['entities']['user_mentions'])),
-        'um_name': ' '.join(map(lambda um: str(um['name']), tweet['entities']['user_mentions'])),
-        'um_id': ' '.join(map(lambda um: str(um['id_str']), tweet['entities']['user_mentions'])),
-        'media_url': ' '.join(map(lambda m: str(m['media_url_https']), tweet['entities']['media']))
+        'um_screen_name': ' '.join(map(lambda um: unicode(um['screen_name']), tweet['entities']['user_mentions'])),
+        'um_name': ' '.join(map(lambda um: unicode(um['name']), tweet['entities']['user_mentions'])),
+        'um_id': ' '.join(map(lambda um: unicode(um['id_str']), tweet['entities']['user_mentions'])),
+        'media_url': ' '.join(map(lambda m: unicode(m['media_url_https']), tweet['entities']['media']))
         if 'media' in tweet['entities'] else None,
 
     }
 
 
-session = cluster.connect(KEYSPACE)
-prep_query = session.prepare("INSERT INTO tweet JSON ?")
+session = connection.session
+prep_query = session.prepare("INSERT INTO %s.tweet JSON ?" % KEYSPACE)
 
 
 def save_tweet(tweet, event_key, event_kw):
-    session.execute_async(prep_query, [ujson.dumps(create_dict(event_key, event_kw, tweet)),])
+    session.execute_async(prep_query, [ujson.dumps(create_dict(event_key, event_kw, tweet)), ])
 
     # Tweet.create(**create_dict(event_key, event_kw, tweet))
