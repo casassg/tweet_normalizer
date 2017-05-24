@@ -81,8 +81,8 @@ def create_dict(event_key, event_kw, tweet):
         't_text': tweet['text'],
         't_retweet_count': tweet['retweet_count'],
         't_favorite_count': tweet['favorite_count'],
-        't_geo': unicode(tweet['geo']),
-        't_coordinates': unicode(tweet['coordinates']),
+        't_geo': str(tweet['geo']),
+        't_coordinates': str(tweet['coordinates']),
         't_favorited': tweet['favorited'],
         't_retweeted': tweet['retweeted'],
         't_is_a_retweet': 'retweeted_status' in tweet,
@@ -104,10 +104,10 @@ def create_dict(event_key, event_kw, tweet):
         'hashtags': list(map(lambda h: h['text'], tweet['entities']['hashtags'])),
         'urls': list(map(lambda url: url['url'], tweet['entities']['urls'])),
         # Concat names with a space separation
-        'um_screen_name': ' '.join(map(lambda um: unicode(um['screen_name']), tweet['entities']['user_mentions'])),
-        'um_name': ' '.join(map(lambda um: unicode(um['name']), tweet['entities']['user_mentions'])),
-        'um_id': ' '.join(map(lambda um: unicode(um['id_str']), tweet['entities']['user_mentions'])),
-        'media_url': ' '.join(map(lambda m: unicode(m['media_url_https']), tweet['entities']['media']))
+        'um_screen_name': ' '.join(map(lambda um: str(um['screen_name']), tweet['entities']['user_mentions'])),
+        'um_name': ' '.join(map(lambda um: str(um['name']), tweet['entities']['user_mentions'])),
+        'um_id': ' '.join(map(lambda um: str(um['id_str']), tweet['entities']['user_mentions'])),
+        'media_url': ' '.join(map(lambda m: str(m['media_url_https']), tweet['entities']['media']))
         if 'media' in tweet['entities'] else None,
 
     }
