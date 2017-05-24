@@ -1,4 +1,4 @@
-FROM python:2.7-alpine
+FROM python:3.5-alpine
 
 RUN apk add --no-cache gcc musl-dev
 RUN sed -i -e 's/v3\.4/edge/g' /etc/apk/repositories  && \
