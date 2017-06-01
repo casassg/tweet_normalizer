@@ -30,47 +30,48 @@ def main(save):
     # Subscribe to topics
     c.subscribe(['raw_tweets', ], on_assign=print_assignment)
 
-    try:
-        msg_count = 0
-        while True:
-            msg = c.poll()
-            if msg is None:
+    msg_count = 0
+    while True:
+        msg = c.poll()
+        if msg is None:
+            continue
+        if msg.error():
+            # Error or event
+            if msg.error().code() == KafkaError._PARTITION_EOF:
+                # End of partition event
+                logging.info('%% %s [%d] reached end at offset %d' % (msg.topic(), msg.partition(), msg.offset()))
+            elif msg.error():
+                # Error
+                raise KafkaException(msg.error())
+        else:
+            tweet = None
+            try:
+                tweet = ujson.loads(msg.value())
+            except TypeError:
+                logging.error("Message not json: %s" % msg.value())
                 continue
-            if msg.error():
-                # Error or event
-                if msg.error().code() == KafkaError._PARTITION_EOF:
-                    # End of partition event
-                    logging.error('%% %s [%d] reached end at offset %d' % (msg.topic(), msg.partition(), msg.offset()))
-                elif msg.error():
-                    # Error
-                    raise KafkaException(msg.error())
-            else:
-                tweet = ujson.loads(ujson.loads(msg.value()))
-                if 'text' not in tweet:
-                    logging.info('Internal message: %s' % tweet)
-                    continue
-                msg_count += 1
-                # Proper message
+            except ValueError:
+                logging.error("Message not json: %s" % msg.value())
+                continue
+            if 'text' not in tweet:
+                logging.info('Internal message: %s' % tweet)
+                continue
+            msg_count += 1
+            # Proper message
 
-                if any(token in tweet['text'] for token in TOKENS):
-                    logging.info('Tweet accepted: %s:%d:%d: key=%s tweet_id=%s' %
-                                 (msg.topic(), msg.partition(), msg.offset(),
-                                  str(msg.key()), tweet['id']))
-                    save(tweet, EVENT_KEY, TOKENS)
+            if any(token in tweet['text'] for token in TOKENS):
+                logging.info('Tweet accepted: %s:%d:%d: key=%s tweet_id=%s' %
+                             (msg.topic(), msg.partition(), msg.offset(),
+                              str(msg.key()), tweet['id']))
+                save(tweet, EVENT_KEY, TOKENS)
 
-            if msg_count == 1:
-                open('/tmp/healthy', 'a').close()
-
-    except KeyboardInterrupt:
-        sys.stderr.write('%% Aborted by user\n')
-    finally:
-        # Shut down c
-        c.close()
+        if msg_count == 1:
+            open('/tmp/healthy', 'a').close()
 
 
 if __name__ == "__main__":
     logging.basicConfig(
-        format='%(asctime)s.%(msecs)s:%(name)s:%(thread)d:%(levelname)s:%(process)d:%(message)s',
+        format='%(asctime)s.%(msecs)s%(levelname)s:%(message)s',
         level=logging.INFO
     )
     import model
