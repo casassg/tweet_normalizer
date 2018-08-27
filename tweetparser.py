@@ -16,6 +16,10 @@ assert TOKENS, 'Tokens can\'t be empty'
 KAFKA_SERVER = os.environ.get('KAFKA_SERVERS', 'localhost:9092')
 
 
+def check_token(token, text):
+    tokens = token.split(' ')
+    return all(t in text for t in tokens)
+
 def main(save):
     conf = {'bootstrap.servers': KAFKA_SERVER,
             'group.id': EVENT_KEY,
@@ -58,8 +62,9 @@ def main(save):
                 continue
             msg_count += 1
             # Proper message
+            text = tweet['text'].lower()
 
-            if any(token in tweet['text'] for token in TOKENS):
+            if any(check_token(token,text) for token in TOKENS):
                 logging.info('Tweet accepted: %s:%d:%d: key=%s tweet_id=%s' %
                              (msg.topic(), msg.partition(), msg.offset(),
                               str(msg.key()), tweet['id']))

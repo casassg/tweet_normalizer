@@ -4,7 +4,7 @@ push: push-eventparser
 
 # To bump the Zeppelin version, bump the version in
 # zeppelin/Dockerfile and bump this tag and reset to v1.
-TAG = 1.2.7
+TAG = 1.2.8
 
 eventparser:
 	docker build -t projectepic/tweet-cassandra .
